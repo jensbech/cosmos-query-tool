@@ -2,6 +2,10 @@
 
 Query Cosmos Containers from the command line.
 
+## Build requirements
+
+`python` `pip` `az` `make`
+
 ## Environment
 
 ```bash
