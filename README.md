@@ -1,6 +1,6 @@
 # Cosmos Query CLI
 
-Query Cosmos Containers from the command line.
+Run queries agains a container from the command line.
 
 ## Build requirements
 

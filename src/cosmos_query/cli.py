@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-"""
-Cosmos DB Query CLI Tool
-
-A command-line tool for querying Azure Cosmos DB and saving results to JSON files.
-"""
-
 import os
 import sys
 import argparse
@@ -12,7 +6,6 @@ from typing import Optional, Any, List, Tuple, Type
 
 
 def _import_dependencies() -> Tuple[Any, Any, Any]:
-    """Import heavy dependencies only when needed for actual query execution."""
     import json
     import time
     import warnings
@@ -25,7 +18,6 @@ def _import_dependencies() -> Tuple[Any, Any, Any]:
 
 
 def _import_azure_cosmos() -> Tuple[Any, Type[Exception], Type[Exception]]:
-    """Lazy import of Azure Cosmos modules to improve startup time."""
     try:
         import azure.cosmos.cosmos_client as cosmos_client
         from azure.cosmos.exceptions import (
@@ -79,7 +71,6 @@ def print_header(message: str) -> None:
 
 
 def show_spinner(duration: float = 1.0) -> None:
-    """Show a spinner for the given duration."""
     json, time, warnings = _import_dependencies()
 
     spinner_chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
@@ -98,9 +89,8 @@ def show_spinner(duration: float = 1.0) -> None:
 
 
 def create_parser() -> argparse.ArgumentParser:
-    """Create and configure the argument parser."""
     parser = argparse.ArgumentParser(
-        description="Query Azure Cosmos DB and save results to JSON file",
+        description="Query Azure Cosmos DB",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -196,7 +186,6 @@ Environment Variables:
 
 
 def validate_args(args: argparse.Namespace) -> None:
-    """Validate required arguments with friendly error messages."""
     missing_args = []
 
     if not args.account:
@@ -269,18 +258,14 @@ def validate_args(args: argparse.Namespace) -> None:
 
 
 def build_host_url(account: str, custom_host: Optional[str] = None) -> str:
-    """Build the Cosmos DB host URL."""
     if custom_host:
         return custom_host
     return f"https://{account}.documents.azure.com:443/"
 
 
 def execute_query(args: argparse.Namespace) -> List[Any]:
-    """Execute the Cosmos DB query and return results with progress indicators."""
-    # Import dependencies only when needed
     json, time, warnings = _import_dependencies()
 
-    # Import Azure modules only when needed
     cosmos_client, CosmosResourceNotFoundError, CosmosHttpResponseError = (
         _import_azure_cosmos()
     )
@@ -290,7 +275,6 @@ def execute_query(args: argparse.Namespace) -> List[Any]:
     if not args.quiet:
         print_header("Cosmos DB Query Execution")
 
-        # Show configuration (without sensitive data)
         print_info(f"Account: {Colors.BOLD}{args.account}{Colors.END}")
         print_info(f"Database: {Colors.BOLD}{args.database}{Colors.END}")
         print_info(f"Container: {Colors.BOLD}{args.container}{Colors.END}")
@@ -401,8 +385,6 @@ def output_results(
     quiet: bool = False,
     compact: bool = False,
 ) -> None:
-    """Output query results to stdout or file."""
-    # Import json only when needed for output
     json, time, warnings = _import_dependencies()
 
     if compact:
@@ -501,8 +483,6 @@ def output_results(
 
 
 def main() -> None:
-    """Main entry point."""
-    # Super fast help check - before any heavy imports or processing
     if len(sys.argv) > 1 and sys.argv[1] in ["-h", "--help", "help"]:
         parser = create_parser()
         parser.print_help()
@@ -510,7 +490,6 @@ def main() -> None:
 
     parser = create_parser()
 
-    # Check if no arguments provided (except program name)
     if len(sys.argv) == 1:
         print_error("No arguments provided!")
         print_info("A query is required to run cosmos-query.")
@@ -525,8 +504,6 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # Early validation - check required args before showing header or
-    # importing Azure modules
     if not args.query:
         print_error("Query is required!")
         print_info(
@@ -537,28 +514,6 @@ def main() -> None:
             f"Run: {Colors.BOLD}cosmos-query --help{Colors.END} for more information"
         )
         sys.exit(1)
-
-    if not args.quiet:
-        print(
-            f"\n{Colors.BOLD}{Colors.CYAN}"
-            f"╭─────────────────────────────────────╮{Colors.END}",
-            file=sys.stderr,
-        )
-        print(
-            f"{Colors.BOLD}{Colors.CYAN}"
-            f"│         Cosmos Query CLI v1.0       │{Colors.END}",
-            file=sys.stderr,
-        )
-        print(
-            f"{Colors.BOLD}{Colors.CYAN}"
-            f"│     Azure Cosmos DB Query Tool     │{Colors.END}",
-            file=sys.stderr,
-        )
-        print(
-            f"{Colors.BOLD}{Colors.CYAN}"
-            f"╰─────────────────────────────────────╯{Colors.END}",
-            file=sys.stderr,
-        )
 
     validate_args(args)
 
