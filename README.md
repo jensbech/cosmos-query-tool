@@ -1,22 +1,6 @@
 # Cosmos Query CLI
 
-Run queries agains a container from the command line.
-
-## Build requirements
-
-`python` `pip` `az` `make`
-
-## Environment
-
-```bash
-export COSMOS_ACCOUNT="your-account"
-export COSMOS_DATABASE="your-database"
-export COSMOS_CONTAINER="your-container"
-export COSMOS_DB_KEY="your-key"
-```
-
-## Get Cosmos DB Key
-
-```bash
-az cosmosdb keys list --name "account" --resource-group "rg" --query "primaryMasterKey" -o tsv
-```
+- Run queries against containers from the command line.
+- Required for building: `python` `pip` `az` `make`
+- Required for running: `COSMOS_ACCOUNT` `COSMOS_DATABASE` `COSMOS_CONTAINER` `COSMOS_DB_KEY` or supply them as arguments when running the binary.
+- How to get `COSMOS_DB_KEY`: `az cosmosdb keys list --name "account" --resource-group "rg" --query "primaryMasterKey" -o tsv`
