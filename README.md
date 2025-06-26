@@ -1,5 +1,7 @@
 # Cosmos Query CLI
 
+Query Cosmos Containers from the command line.
+
 ## Environment
 
 ```bash
