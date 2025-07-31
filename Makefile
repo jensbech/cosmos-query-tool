@@ -29,7 +29,6 @@ clean:
 	find . -name "*.pyo" -delete
 
 dist: install format clean lint typecheck
-	@echo "✅ Lint and type checking passed"
 	@echo "Building standalone binary..."
 	./scripts/build_binary.sh
 

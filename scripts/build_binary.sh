@@ -2,14 +2,12 @@
 
 set -e
 
-echo "🏗️  Building standalone binary for cosmos-query..."
+echo "Building binary..."
 
 if ! command -v pyinstaller &> /dev/null; then
-    echo "📦 Installing PyInstaller..."
     pip install pyinstaller
 fi
 
-echo "🔨 Creating binary..."
 pyinstaller \
     --onefile \
     --name cosmos-query \
@@ -25,5 +23,4 @@ pyinstaller \
     --exclude-module pandas \
     src/cosmos_query/cli.py
 
-echo "✅ Binary created successfully!"
-echo "📁 Location: dist/cosmos-query"
+echo "Build complete. Binary location: dist/cosmos-query"

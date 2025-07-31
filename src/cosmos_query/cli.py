@@ -10,7 +10,6 @@ def _import_dependencies() -> Tuple[Any, Any, Any]:
     import time
     import warnings
 
-    # Suppress urllib3 warnings
     warnings.filterwarnings("ignore", message="urllib3 v2 only supports OpenSSL 1.1.1+")
     warnings.filterwarnings("ignore", category=UserWarning, module="urllib3")
 
@@ -47,45 +46,32 @@ class Colors:
 
 
 def print_error(message: str) -> None:
-    print(f"{Colors.RED}❌ Error: {message}{Colors.END}", file=sys.stderr)
+    print(f"{Colors.RED}Error: {message}{Colors.END}", file=sys.stderr)
 
 
 def print_success(message: str) -> None:
-    print(f"{Colors.GREEN}✅ {message}{Colors.END}", file=sys.stderr)
+    print(f"{Colors.GREEN} {message}{Colors.END}", file=sys.stderr)
 
 
 def print_info(message: str) -> None:
-    print(f"{Colors.BLUE}ℹ️  {message}{Colors.END}", file=sys.stderr)
+    print(f"{Colors.BLUE}  {message}{Colors.END}", file=sys.stderr)
 
 
 def print_warning(message: str) -> None:
-    print(f"{Colors.YELLOW}⚠️  {message}{Colors.END}", file=sys.stderr)
+    print(f"{Colors.YELLOW}  {message}{Colors.END}", file=sys.stderr)
 
 
 def print_progress(message: str) -> None:
-    print(f"{Colors.CYAN}🔄 {message}{Colors.END}", file=sys.stderr)
+    print(f"{Colors.CYAN} {message}{Colors.END}", file=sys.stderr)
 
 
 def print_header(message: str) -> None:
-    print(f"\n{Colors.BOLD}{Colors.CYAN}🚀 {message}{Colors.END}", file=sys.stderr)
+    print(f"\n{Colors.BOLD}{message}{Colors.END}", file=sys.stderr)
 
 
 def show_spinner(duration: float = 1.0) -> None:
-    json, time, warnings = _import_dependencies()
-
-    spinner_chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
-    end_time = time.time() + duration
-    i = 0
-    while time.time() < end_time:
-        print(
-            f"\r{Colors.CYAN}{spinner_chars[i % len(spinner_chars)]}{Colors.END}",
-            end="",
-            flush=True,
-            file=sys.stderr,
-        )
-        time.sleep(0.1)
-        i += 1
-    print("\r", end="", flush=True, file=sys.stderr)
+    # Removed spinner animation to reduce visual noise
+    pass
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -209,7 +195,7 @@ def validate_args(args: argparse.Namespace) -> None:
             print(f"  {i}. {Colors.YELLOW}{arg}{Colors.END}", file=sys.stderr)
 
         print(
-            f"\n{Colors.BOLD}💡 You can provide these values in two ways:{Colors.END}",
+            f"\n{Colors.BOLD}You can provide these values in two ways:{Colors.END}",
             file=sys.stderr,
         )
         print(
@@ -240,7 +226,7 @@ def validate_args(args: argparse.Namespace) -> None:
 
         if "Cosmos DB master key" in missing_args:
             print(
-                f"\n{Colors.MAGENTA}📋 To get your Cosmos DB key:{Colors.END}",
+                f"\n{Colors.MAGENTA}To get your Cosmos DB key:{Colors.END}",
                 file=sys.stderr,
             )
             print("  az cosmosdb keys list \\", file=sys.stderr)
@@ -250,7 +236,7 @@ def validate_args(args: argparse.Namespace) -> None:
             print("    --output tsv", file=sys.stderr)
 
         print(
-            f"\n{Colors.GREEN}📖 For more examples, run: "
+            f"\n{Colors.GREEN}For more examples, run: "
             f"cosmos-query --help{Colors.END}",
             file=sys.stderr,
         )
@@ -272,55 +258,13 @@ def execute_query(args: argparse.Namespace) -> List[Any]:
 
     host = build_host_url(args.account, args.host)
 
-    if not args.quiet:
-        print_header("Cosmos DB Query Execution")
-
-        print_info(f"Account: {Colors.BOLD}{args.account}{Colors.END}")
-        print_info(f"Database: {Colors.BOLD}{args.database}{Colors.END}")
-        print_info(f"Container: {Colors.BOLD}{args.container}{Colors.END}")
-        print_info(f"Host: {Colors.BOLD}{host}{Colors.END}")
-
-        if args.verbose:
-            print_info(f"Query: {Colors.BOLD}{args.query}{Colors.END}")
-        else:
-            query_preview = (
-                args.query[:100] + "..." if len(args.query) > 100 else args.query
-            )
-            print_info(f"Query: {Colors.BOLD}{query_preview}{Colors.END}")
-
     try:
-        if not args.quiet:
-            print_progress("Connecting to Cosmos DB...")
-            show_spinner(0.5)
-
         client = cosmos_client.CosmosClient(host, {"masterKey": args.key})
-        if not args.quiet:
-            print_success("Connected to Cosmos DB")
-
-        if not args.quiet:
-            print_progress("Accessing database...")
-            show_spinner(0.3)
         db = client.get_database_client(args.database)
-        if not args.quiet:
-            print_success(f"Database '{args.database}' accessed")
-
-        if not args.quiet:
-            print_progress("Accessing container...")
-            show_spinner(0.3)
         container = db.get_container_client(args.container)
-        if not args.quiet:
-            print_success(f"Container '{args.container}' accessed")
 
         cross_partition = args.cross_partition and not args.no_cross_partition
 
-        if not args.quiet:
-            if cross_partition:
-                print_info("Cross-partition query: Enabled")
-            else:
-                print_warning("Cross-partition query: Disabled")
-
-        if not args.quiet:
-            print_progress("Executing query...")
         start_time = time.time()
 
         items = list(
@@ -333,8 +277,9 @@ def execute_query(args: argparse.Namespace) -> List[Any]:
         duration = end_time - start_time
 
         if not args.quiet:
-            print_success(f"Query completed in {duration:.2f} seconds")
-            print_success(f"Retrieved {Colors.BOLD}{len(items)}{Colors.END} items")
+            print_success(
+                f"Query completed in {duration:.2f} seconds",
+            )
 
         return items
 
@@ -391,59 +336,12 @@ def output_results(
         indent = None
 
     if output_file:
-        if not quiet:
-            print_header("Saving Results")
-
-            if not items:
-                print_warning("No results to save")
-                print_info(
-                    f"Creating empty file: {Colors.BOLD}{output_file}{Colors.END}"
-                )
-            else:
-                print_progress(f"Writing {len(items)} items to file...")
-
         try:
-            if not quiet:
-                show_spinner(0.5)
-
             with open(output_file, "w") as f:
                 json.dump(items, f, indent=indent)
 
             if not quiet:
-                file_size = os.path.getsize(output_file)
-                file_size_mb = file_size / (1024 * 1024)
-
-                print_success(
-                    f"Results saved to: {Colors.BOLD}{output_file}{Colors.END}"
-                )
-
-                if file_size_mb > 1:
-                    print_info(
-                        f"File size: {Colors.BOLD}{file_size_mb:.2f} MB{Colors.END}"
-                    )
-                else:
-                    file_size_kb = file_size / 1024
-                    print_info(
-                        f"File size: {Colors.BOLD}{file_size_kb:.1f} KB{Colors.END}"
-                    )
-
-                if verbose and items:
-                    print_info(
-                        f"JSON indentation: {indent if indent else 'compact'} spaces"
-                    )
-
-                    if len(items) > 0:
-                        print_info("Preview of first result:")
-                        preview = json.dumps(items[0], indent=2)
-                        if len(preview) > 300:
-                            preview = preview[:300] + "..."
-                        print(f"{Colors.WHITE}{preview}{Colors.END}", file=sys.stderr)
-
-                print(
-                    f"\n{Colors.GREEN}🎉 Query execution completed "
-                    f"successfully!{Colors.END}",
-                    file=sys.stderr,
-                )
+                print_success(f"Results saved to: {output_file}")
 
         except IOError as e:
             print_error(f"Failed to write to file '{output_file}'")
@@ -451,35 +349,18 @@ def output_results(
 
             if "Permission denied" in str(e):
                 print_info(
-                    "💡 Try running with appropriate permissions or "
-                    "choose a different output location"
+                    "Try running with appropriate permissions"
+                    "or choose a different output location"
                 )
             elif "No such file or directory" in str(e):
-                print_info("💡 Make sure the directory exists or use a different path")
+                print_info("Make sure the directory exists or use a different path")
 
             sys.exit(1)
     else:
-        if not quiet and verbose:
-            print_header("Output Results")
-            if not items:
-                print_warning("No results found")
-            else:
-                print_info(f"Outputting {len(items)} items to stdout")
-            print_info("💡 Tip: Pipe to jq for formatting: cosmos-query ... | jq")
-            print_info("💡 Tip: Save to file: cosmos-query ... > results.json")
-            print("", file=sys.stderr)
-
         try:
             json.dump(items, sys.stdout, indent=indent)
         except BrokenPipeError:
             pass
-
-        if not quiet and verbose:
-            print(
-                f"\n{Colors.GREEN}🎉 Query execution completed "
-                f"successfully!{Colors.END}",
-                file=sys.stderr,
-            )
 
 
 def main() -> None:
@@ -491,28 +372,17 @@ def main() -> None:
     parser = create_parser()
 
     if len(sys.argv) == 1:
-        print_error("No arguments provided!")
-        print_info("A query is required to run cosmos-query.")
+        print_error("No arguments provided")
+        print_info("A query is required to run cosmos-query")
         print_info(
             f"Run: {Colors.BOLD}cosmos-query --help{Colors.END} for usage information"
-        )
-        print_info(
-            f'Quick example: {Colors.BOLD}cosmos-query -q "SELECT * FROM c" '
-            f"-a myaccount -d mydb -c mycontainer{Colors.END}"
         )
         sys.exit(1)
 
     args = parser.parse_args()
 
     if not args.query:
-        print_error("Query is required!")
-        print_info(
-            f'Use: {Colors.BOLD}-q "SELECT * FROM c"{Colors.END} or '
-            f'{Colors.BOLD}--query "SELECT * FROM c"{Colors.END}'
-        )
-        print_info(
-            f"Run: {Colors.BOLD}cosmos-query --help{Colors.END} for more information"
-        )
+        print_error("Query is required")
         sys.exit(1)
 
     validate_args(args)
