@@ -2,7 +2,7 @@
 import os
 import sys
 import argparse
-from typing import Optional, Any, List, Tuple, Type
+from typing import Any, List, Tuple, Type
 
 
 def _import_dependencies() -> Tuple[Any, Any, Any]:
@@ -57,46 +57,8 @@ def print_info(message: str) -> None:
     print(f"{Colors.BLUE}  {message}{Colors.END}", file=sys.stderr)
 
 
-def print_warning(message: str) -> None:
-    print(f"{Colors.YELLOW}  {message}{Colors.END}", file=sys.stderr)
-
-
-def print_progress(message: str) -> None:
-    print(f"{Colors.CYAN} {message}{Colors.END}", file=sys.stderr)
-
-
-def print_header(message: str) -> None:
-    print(f"\n{Colors.BOLD}{message}{Colors.END}", file=sys.stderr)
-
-
-def show_spinner(duration: float = 1.0) -> None:
-    # Removed spinner animation to reduce visual noise
-    pass
-
-
 def create_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Query Azure Cosmos DB",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  %(prog)s --account myaccount --database mydb --container mycont \\
-           --query "SELECT * FROM c"
-  %(prog)s -a myaccount -d mydb -c mycont -q "SELECT * FROM c" | jq
-  %(prog)s --account myaccount --database mydb --container mycont \\
-           --query "SELECT * FROM c" > results.json
-  %(prog)s --account myaccount --database mydb --container mycont \\
-           --query "SELECT * FROM c" --compact
-  %(prog)s --account myaccount --database mydb --container mycont \\
-           --query "SELECT * FROM c" --quiet | jq '.[] | .name'
-
-Environment Variables:
-  COSMOS_DB_KEY    - Cosmos DB master key (alternative to --key)
-  COSMOS_ACCOUNT   - Cosmos DB account name (alternative to --account)
-  COSMOS_DATABASE  - Database ID (alternative to --database)
-  COSMOS_CONTAINER - Container ID (alternative to --container)
-        """,
-    )
+    parser = argparse.ArgumentParser(description="Query Azure Cosmos DB")
 
     parser.add_argument(
         "-a",
@@ -128,46 +90,6 @@ Environment Variables:
         default=os.environ.get("COSMOS_DB_KEY"),
     )
 
-    parser.add_argument(
-        "-o", "--output", help="Output JSON file (default: print to stdout)"
-    )
-
-    parser.add_argument(
-        "--host",
-        help="Custom Cosmos DB host URL (default: auto-generated from account)",
-    )
-
-    parser.add_argument(
-        "--cross-partition",
-        action="store_true",
-        default=True,
-        help="Enable cross-partition query (default: True)",
-    )
-
-    parser.add_argument(
-        "--no-cross-partition",
-        action="store_true",
-        help="Disable cross-partition query",
-    )
-
-    parser.add_argument(
-        "--indent", type=int, default=4, help="JSON output indentation (default: 4)"
-    )
-
-    parser.add_argument(
-        "--compact", action="store_true", help="Compact JSON output (no indentation)"
-    )
-
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Enable verbose output"
-    )
-
-    parser.add_argument(
-        "--quiet",
-        action="store_true",
-        help="Suppress progress messages (useful for piping output)",
-    )
-
     return parser
 
 
@@ -187,7 +109,6 @@ def validate_args(args: argparse.Namespace) -> None:
         missing_args.append("Cosmos DB master key")
 
     if missing_args:
-        print_header("Configuration Error")
         print_error("Missing required configuration:")
         print("", file=sys.stderr)
 
@@ -236,17 +157,10 @@ def validate_args(args: argparse.Namespace) -> None:
             print("    --output tsv", file=sys.stderr)
 
         print(
-            f"\n{Colors.GREEN}For more examples, run: "
-            f"cosmos-query --help{Colors.END}",
+            f"\n{Colors.GREEN}Set required values.{Colors.END}",
             file=sys.stderr,
         )
         sys.exit(1)
-
-
-def build_host_url(account: str, custom_host: Optional[str] = None) -> str:
-    if custom_host:
-        return custom_host
-    return f"https://{account}.documents.azure.com:443/"
 
 
 def execute_query(args: argparse.Namespace) -> List[Any]:
@@ -256,30 +170,25 @@ def execute_query(args: argparse.Namespace) -> List[Any]:
         _import_azure_cosmos()
     )
 
-    host = build_host_url(args.account, args.host)
+    host = f"https://{args.account}.documents.azure.com:443/"
 
     try:
         client = cosmos_client.CosmosClient(host, {"masterKey": args.key})
         db = client.get_database_client(args.database)
         container = db.get_container_client(args.container)
 
-        cross_partition = args.cross_partition and not args.no_cross_partition
-
         start_time = time.time()
 
         items = list(
-            container.query_items(
-                query=args.query, enable_cross_partition_query=cross_partition
-            )
+            container.query_items(query=args.query, enable_cross_partition_query=True)
         )
 
         end_time = time.time()
         duration = end_time - start_time
 
-        if not args.quiet:
-            print_success(
-                f"Query completed in {duration:.2f} seconds",
-            )
+        print_success(
+            f"Query completed in {duration:.2f} seconds, retrieved {len(items)} items"
+        )
 
         return items
 
@@ -314,69 +223,24 @@ def execute_query(args: argparse.Namespace) -> List[Any]:
     except Exception as e:
         print_error("Unexpected error occurred")
         print_info(f"Details: {e}")
-        if args.verbose:
-            import traceback
-
-            print(f"\n{Colors.RED}Full traceback:{Colors.END}")
-            traceback.print_exc()
         sys.exit(1)
 
 
-def output_results(
-    items: List[Any],
-    output_file: Optional[str],
-    indent: Optional[int],
-    verbose: bool = False,
-    quiet: bool = False,
-    compact: bool = False,
-) -> None:
+def output_results(items: List[Any]) -> None:
     json, time, warnings = _import_dependencies()
 
-    if compact:
-        indent = None
-
-    if output_file:
-        try:
-            with open(output_file, "w") as f:
-                json.dump(items, f, indent=indent)
-
-            if not quiet:
-                print_success(f"Results saved to: {output_file}")
-
-        except IOError as e:
-            print_error(f"Failed to write to file '{output_file}'")
-            print_info(f"Details: {e}")
-
-            if "Permission denied" in str(e):
-                print_info(
-                    "Try running with appropriate permissions"
-                    "or choose a different output location"
-                )
-            elif "No such file or directory" in str(e):
-                print_info("Make sure the directory exists or use a different path")
-
-            sys.exit(1)
-    else:
-        try:
-            json.dump(items, sys.stdout, indent=indent)
-        except BrokenPipeError:
-            pass
+    try:
+        json.dump(items, sys.stdout, indent=4)
+    except BrokenPipeError:
+        pass
 
 
 def main() -> None:
-    if len(sys.argv) > 1 and sys.argv[1] in ["-h", "--help", "help"]:
-        parser = create_parser()
-        parser.print_help()
-        sys.exit(0)
-
     parser = create_parser()
 
     if len(sys.argv) == 1:
         print_error("No arguments provided")
         print_info("A query is required to run cosmos-query")
-        print_info(
-            f"Run: {Colors.BOLD}cosmos-query --help{Colors.END} for usage information"
-        )
         sys.exit(1)
 
     args = parser.parse_args()
@@ -389,9 +253,7 @@ def main() -> None:
 
     items = execute_query(args)
 
-    output_results(
-        items, args.output, args.indent, args.verbose, args.quiet, args.compact
-    )
+    output_results(items)
 
 
 if __name__ == "__main__":
